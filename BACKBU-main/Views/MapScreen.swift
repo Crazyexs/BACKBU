@@ -24,7 +24,7 @@ struct MapScreen: View {
                 }
                 UserAnnotation()
             }
-            .mapStyle(.standard)
+            .mapStyle(.standard) // Apple Maps
             .mapControls { MapUserLocationButton(); MapPitchToggle() }
             .ignoresSafeArea()
 
@@ -80,12 +80,18 @@ struct MapScreen: View {
                     .buttonStyle(.borderedProminent)
                 } else {
                     let t = state.recorder.activeTrip!
-                    Label("\(String(format: \"%.2f\", t.distanceMeters/1000)) km • \(Int(Date().timeIntervalSince(t.startedAt))) s",
-                          systemImage: "speedometer")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    let km = t.distanceMeters / 1000
+                    let secs = Int(Date().timeIntervalSince(t.startedAt))
+
+                    Label {
+                        Text(String(format: "%.2f km • %d s", km, secs))
+                    } icon: {
+                        Image(systemName: "speedometer")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
 
                     Button(role: .destructive) {
                         Task { await state.recorder.stop() }

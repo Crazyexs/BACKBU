@@ -6,7 +6,7 @@ import UIKit
 @MainActor
 final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
-    // MARK: Public
+    // MARK: - Public
     @Published var currentLocation: CLLocation?
     var onLocation: ((CLLocation) -> Void)?
 
@@ -21,7 +21,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         UIApplication.shared.open(url)
     }
 
-    // MARK: Private
+    // MARK: - Private
     private let manager = CLLocationManager()
     private var wantsUpdates = false
 
@@ -37,7 +37,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.activityType = .automotiveNavigation
         manager.pausesLocationUpdatesAutomatically = true
 
-        // Only allow background updates if the entitlement exists (and not on Simulator)
+        // Allow background updates only if capability exists (and not on Simulator)
         #if targetEnvironment(simulator)
         let enableBackground = false
         #else
@@ -53,7 +53,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: Permissions
+    // MARK: - Permissions
     func requestPermissions() {
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -67,7 +67,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: Control
+    // MARK: - Control
     func start() {
         wantsUpdates = true
         maybeStartIfAuthorized()
@@ -91,7 +91,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: CLLocationManagerDelegate (Swift 6 friendly)
+    // MARK: - CLLocationManagerDelegate (Swift 6 friendly)
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in self.maybeStartIfAuthorized() }
     }
@@ -110,7 +110,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Common on Simulator without a simulated route
-        // print("Location error:", error.localizedDescription)
+        // Common on Simulator if no route is set
     }
 }
