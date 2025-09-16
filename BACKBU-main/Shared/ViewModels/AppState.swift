@@ -1,8 +1,8 @@
 import Foundation
+import Combine
 import CoreLocation
 import ActivityKit
-import Combine
-
+import UserNotifications
 
 @MainActor
 final class AppState: ObservableObject {
@@ -17,28 +17,52 @@ final class AppState: ObservableObject {
     private let bt = BluetoothAutoStarter()
 
     init() {
+        // Load persisted data
         Task { await store.load() }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _,_ in }
+
+        // Ask for notifications (for speed-zone notices, etc.)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+
+        // Ask for location permission on first run
         location.requestPermissions()
     }
 
+    /// Configure motion and Bluetooth auto start/stop logic
     func configureAutoStart() {
+        // Motion-based auto start/stop
         if settings.autoStartMotion {
             motion.start { [weak self] driving in
                 guard let self else { return }
-                if driving, self.recorder.activeTrip == nil { self.recorder.start() }
-            }
-        }
-        if settings.autoStartBluetooth {
-            bt.start(whitelist: { [weak self] in self?.settings.carBluetoothNames ?? [] }) { [weak self] connected in
-                guard let self else { return }
-                if connected, self.recorder.activeTrip == nil { self.recorder.start() }
-                if !connected, let minutes = self?.settings.autoStopAfterMinutesStill {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + .minutes(Double(minutes))) {
+                if driving, self.recorder.activeTrip == nil {
+                    self.recorder.start()
+                } else if !driving {
+                    let minutes = self.settings.autoStopAfterMinutesStill
+                    DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(minutes * 60)) {
                         Task { await self.recorder.stopIfIdle() }
                     }
                 }
             }
+        } else {
+            motion.stop()
+        }
+
+        // Bluetooth-based auto start/stop
+        if settings.autoStartBluetooth {
+            bt.start(
+                whitelist: { [weak self] in self?.settings.carBluetoothNames ?? [] }
+            ) { [weak self] connected in
+                guard let self else { return }
+                if connected, self.recorder.activeTrip == nil {
+                    self.recorder.start()
+                } else if !connected {
+                    let minutes = self.settings.autoStopAfterMinutesStill
+                    DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(minutes * 60)) {
+                        Task { await self.recorder.stopIfIdle() }
+                    }
+                }
+            }
+        } else {
+            bt.stop()
         }
     }
 }
