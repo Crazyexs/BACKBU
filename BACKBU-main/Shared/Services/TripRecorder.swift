@@ -2,6 +2,8 @@ import Foundation
 import CoreLocation
 import ActivityKit
 import SwiftUI
+import Combine
+
 
 @MainActor
 final class TripRecorder: ObservableObject {

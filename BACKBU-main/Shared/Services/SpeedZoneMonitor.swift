@@ -1,6 +1,9 @@
 import CoreLocation
 import UserNotifications
 import SwiftUI
+import Foundation
+import Combine
+
 
 final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()

@@ -1,6 +1,8 @@
 import Foundation
 import CoreLocation
 import ActivityKit
+import Combine
+
 
 @MainActor
 final class AppState: ObservableObject {
