@@ -20,7 +20,7 @@ final class AppState: ObservableObject {
         // Load persisted data
         Task { await store.load() }
 
-        // Ask for notifications (for speed-zone notices, etc.)
+        // Ask for notifications
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
 
         // Ask for location permission on first run
@@ -48,9 +48,7 @@ final class AppState: ObservableObject {
 
         // Bluetooth-based auto start/stop
         if settings.autoStartBluetooth {
-            bt.start(
-                whitelist: { [weak self] in self?.settings.carBluetoothNames ?? [] }
-            ) { [weak self] connected in
+            bt.start(whitelist: { [weak self] in self?.settings.carBluetoothNames ?? [] }) { [weak self] connected in
                 guard let self else { return }
                 if connected, self.recorder.activeTrip == nil {
                     self.recorder.start()
@@ -62,7 +60,7 @@ final class AppState: ObservableObject {
                 }
             }
         } else {
-            bt.stop()
+            bt.stop()    // <-- lowerCamelCase; exists in BluetoothAutoStarter above
         }
     }
 }

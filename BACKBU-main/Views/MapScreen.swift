@@ -1,6 +1,5 @@
 import SwiftUI
 import MapKit
-import CoreLocation
 
 struct MapScreen: View {
     @EnvironmentObject var state: AppState
@@ -8,12 +7,12 @@ struct MapScreen: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // ➜ FIX 1: add fallback: .automatic
+            // add fallback: .automatic
             Map(position: .constant(.userLocation(followsHeading: false, fallback: .automatic))) {
                 if let t = state.recorder.activeTrip {
                     let coords = t.points.map { CLLocationCoordinate2D(latitude: $0.coord.latitude, longitude: $0.coord.longitude) }
                     if coords.count > 1 {
-                        // ➜ FIX 2: move StrokeStyle into the stroke(...) modifier
+                        // move StrokeStyle into the .stroke(_, style:) modifier
                         MapPolyline(coordinates: coords)
                             .stroke(.blue, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     }
@@ -28,7 +27,7 @@ struct MapScreen: View {
         .navigationTitle("Map")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { state.location.requestPermissions() } label: { Image(systemName: "location") }
+                Button { state.location.requestPermissions() } label: { Image(systemName:"location") }
             }
         }
         .onAppear { state.configureAutoStart() }
@@ -52,7 +51,7 @@ struct MapScreen: View {
             HStack(spacing: 12) {
                 if state.recorder.activeTrip == nil {
                     Button {
-                        state.recorder.start()   // start() is non-async in your codebase
+                        state.recorder.start()
                     } label: {
                         Label("Start Tracking", systemImage: "play.fill")
                             .font(.headline).padding(.vertical, 14).frame(maxWidth: .infinity)
@@ -64,7 +63,7 @@ struct MapScreen: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                         .padding(8).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     Button(role: .destructive) {
-                        Task { await state.recorder.stop() } // stop() is async in your code
+                        Task { await state.recorder.stop() }
                     } label: {
                         Label("Stop", systemImage: "stop.fill")
                             .font(.headline).padding(.vertical, 12).frame(maxWidth: 150)
