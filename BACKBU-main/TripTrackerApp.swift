@@ -20,8 +20,8 @@ struct TripTrackerApp: App {
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
             .environmentObject(state)              // AppState
-            .environmentObject(state.settings)     // ✅ SettingsState (required)
-            .preferredColorScheme(.dark)           // remove if you want system appearance
+            .environmentObject(state.settings)     // SettingsState (required)
+            .preferredColorScheme(.dark)
         }
     }
 }

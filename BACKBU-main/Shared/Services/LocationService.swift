@@ -5,11 +5,11 @@ import Combine
 @MainActor
 final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
-    // MARK: Public
+    // Public
     @Published var currentLocation: CLLocation?
     var onLocation: ((CLLocation) -> Void)?
 
-    // MARK: Private
+    // Private
     private let manager = CLLocationManager()
     private var wantsUpdates = false
 
@@ -40,7 +40,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: Permissions
+    // Permissions
     func requestPermissions() {
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -54,10 +54,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: Control
+    // Control
     func start() {
         wantsUpdates = true
-        // Don’t call sync Core Location queries on main; wait for the delegate
         maybeStartIfAuthorized()
         if manager.authorizationStatus == .notDetermined {
             requestPermissions()
@@ -79,14 +78,12 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: CLLocationManagerDelegate (Swift 6 friendly)
+    // CLLocationManagerDelegate — Swift-6 friendly
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in
-            self.maybeStartIfAuthorized()
-        }
+        Task { @MainActor in self.maybeStartIfAuthorized() }
     }
 
-    // Keep for older iOS; forward to the new one
+    // Keep old delegate for compatibility
     nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         locationManagerDidChangeAuthorization(manager)
     }
@@ -100,7 +97,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Common on Simulator without a simulated route
-        // print("Location error:", error.localizedDescription)
+        // Common on Simulator if no route is set
     }
 }
