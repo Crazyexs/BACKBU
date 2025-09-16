@@ -1,56 +1,65 @@
 import CoreLocation
 import UserNotifications
 import SwiftUI
-import Foundation
-import Combine
-
 
 final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    @Published var currentLimit: Double? // km/h
+
+    @Published var currentLimit: Double?
 
     override init() {
         super.init()
         manager.delegate = self
-        manager.requestAlwaysAuthorization()
     }
 
+    /// Re-registers geofences for the provided zones.
     func sync(zones: [SpeedZone]) {
-        manager.monitoredRegions.forEach { manager.stopMonitoring(for: $0) }
+        // remove previously monitored regions
+        for region in manager.monitoredRegions {
+            manager.stopMonitoring(for: region)
+        }
+        // register zones
         for z in zones {
-            let r = CLCircularRegion(center: CLLocationCoordinate2D(latitude: z.center.latitude, longitude: z.center.longitude),
-                                     radius: z.radius, identifier: z.id.uuidString)
-            r.notifyOnEntry = true; r.notifyOnExit = true
-            manager.startMonitoring(for: r)
+            let region = CLCircularRegion(center: z.center.location.coordinate,
+                                          radius: z.radius,
+                                          identifier: z.id.uuidString)
+            region.notifyOnEntry = true
+            region.notifyOnExit = true
+            manager.startMonitoring(for: region)
         }
     }
 
+    /// Returns the speed limit if the coordinate lies inside any zone.
     func zoneLimit(for coordinate: CLLocationCoordinate2D, in zones: [SpeedZone]) -> Double? {
         for z in zones {
-            let c = CLLocation(latitude: z.center.latitude, longitude: z.center.longitude)
-            if c.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)) <= z.radius {
+            let c = z.center.location.coordinate
+            let here = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let center = CLLocation(latitude: c.latitude, longitude: c.longitude)
+            if here.distance(from: center) <= z.radius {
                 return z.speedLimitKmh
             }
         }
         return nil
     }
-    
-    func notifyOverSpeed(limit: Double, speed: Double) {
-    Self.notify(
-        title: "Speeding",
-        body: "Limit \(Int(limit)) km/h — you’re at \(Int(speed)) km/h."
-    )
-}
 
-
-    // Keep track of entry/exit to update currentLimit (best-effort).
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) { }
-    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion)  { }
-
+    // MARK: - Notifications
     static func notify(title: String, body: String) {
         let c = UNMutableNotificationContent()
-        c.title = title; c.body = body
+        c.title = title
+        c.body = body
         let req = UNNotificationRequest(identifier: UUID().uuidString, content: c, trigger: nil)
         UNUserNotificationCenter.current().add(req)
     }
+
+    /// Convenience used by TripRecorder when current speed exceeds the limit.
+    func notifyOverSpeed(limit: Double, speed: Double) {
+        Self.notify(
+            title: "Speeding",
+            body: "Limit \(Int(limit)) km/h — you’re at \(Int(speed)) km/h."
+        )
+    }
+
+    // MARK: - CLLocationManagerDelegate (optional)
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) { }
+    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion)  { }
 }

@@ -36,10 +36,10 @@ final class TripRecorder: ObservableObject {
         await store.add(trip)
     }
 
-    // ✅ FIX: remove nonexistent `lastPointTime`; use last point’s speed
+    // Stop if last recorded speed is very low (no nonexistent lastPointTime)
     func stopIfIdle() async {
         guard let trip = activeTrip else { return }
-        if let s = trip.points.last?.speedKmh, s < 3 {   // near zero km/h
+        if let s = trip.points.last?.speedKmh, s < 3 {   // ~stopped
             await stop()
         }
     }
@@ -58,7 +58,6 @@ final class TripRecorder: ObservableObject {
         activity = try? Activity.request(attributes: attr, content: .init(state: state, staleDate: nil))
     }
 
-    // Helper to build the final content state when ending the activity
     private func snapshotContentState() -> TripActivityAttributes.ContentState {
         guard let trip = activeTrip else {
             return .init(speedKmh: 0, distanceKm: 0, durationSec: 0, overSpeed: false)
@@ -74,7 +73,7 @@ final class TripRecorder: ObservableObject {
         return .init(speedKmh: kmh, distanceKm: distKm, durationSec: durSec, overSpeed: over)
     }
 
-    // ✅ FIX: use new API end(content:dismissalPolicy:) (iOS 16.2+)
+    // iOS 16.2+: end(content:dismissalPolicy:)
     private func endActivity() {
         Task {
             await activity?.end(
@@ -97,9 +96,8 @@ final class TripRecorder: ObservableObject {
         trip.points.append(p)
         activeTrip = trip
 
-        // update Live Activity + overspeed notice
         if let limit = zones.zoneLimit(for: loc.coordinate, in: store.speedZones), kmh > limit {
-            zones.notifyOverSpeed(limit: limit, speed: kmh)     // ✅ needs method below
+            zones.notifyOverSpeed(limit: limit, speed: kmh)     // <-- now exists
             Task {
                 let st = TripActivityAttributes.ContentState(
                     speedKmh: Int(kmh.rounded()),
