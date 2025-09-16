@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreLocation
 import ActivityKit
 import SwiftUI
@@ -36,10 +37,10 @@ final class TripRecorder: ObservableObject {
         await store.add(trip)
     }
 
-    // Stop if last recorded speed is very low (no nonexistent lastPointTime)
+    /// Stop if last recorded speed is very low (no nonexistent `lastPointTime`)
     func stopIfIdle() async {
         guard let trip = activeTrip else { return }
-        if let s = trip.points.last?.speedKmh, s < 3 {   // ~stopped
+        if let s = trip.points.last?.speedKmh, s < 3 {
             await stop()
         }
     }
@@ -73,13 +74,17 @@ final class TripRecorder: ObservableObject {
         return .init(speedKmh: kmh, distanceKm: distKm, durationSec: durSec, overSpeed: over)
     }
 
-    // iOS 16.2+: end(content:dismissalPolicy:)
+    /// End the activity (handles both pre-iOS 16.2 and 16.2+)
     private func endActivity() {
         Task {
-            await activity?.end(
-                content: .init(state: snapshotContentState(), staleDate: nil),
-                dismissalPolicy: .immediate
-            )
+            if #available(iOS 16.2, *) {
+                await activity?.end(
+                    content: .init(state: snapshotContentState(), staleDate: nil),
+                    dismissalPolicy: .immediate
+                )
+            } else {
+                await activity?.end(dismissalPolicy: .immediate)
+            }
         }
         activity = nil
     }
@@ -88,16 +93,19 @@ final class TripRecorder: ObservableObject {
     private func ingest(_ loc: CLLocation) {
         guard var trip = activeTrip else { return }
         let kmh = max(0, loc.speed * 3.6)
-        let p = TrackPoint(timestamp: Date(),
-                           coord: .init(loc.coordinate),
-                           speedKmh: kmh,
-                           accuracy: loc.horizontalAccuracy,
-                           altitude: loc.verticalAccuracy >= 0 ? loc.altitude : .nan)
+        let p = TrackPoint(
+            timestamp: Date(),
+            coord: .init(loc.coordinate),
+            speedKmh: kmh,
+            accuracy: loc.horizontalAccuracy,
+            altitude: loc.verticalAccuracy >= 0 ? loc.altitude : .nan
+        )
         trip.points.append(p)
         activeTrip = trip
 
+        // Over-speed check + live activity update
         if let limit = zones.zoneLimit(for: loc.coordinate, in: store.speedZones), kmh > limit {
-            zones.notifyOverSpeed(limit: limit, speed: kmh)     // <-- now exists
+            zones.notifyOverSpeed(limit: limit, speed: kmh)
             Task {
                 let st = TripActivityAttributes.ContentState(
                     speedKmh: Int(kmh.rounded()),
