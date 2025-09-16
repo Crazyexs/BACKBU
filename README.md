@@ -1,7 +1,7 @@
 BACKBU (Trip Tracker)
 SwiftUI iOS app that records your drives with Apple Maps only, shows live speed, draws your route, and organizes trips with stats and settings for custom speed sections.
 
-<p align="center"> <img src="appdemo/1.jpg" width="240"> <img src="appdemo/2.jpg" width="240"> <img src="appdemo/3.jpg" width="240"> <img src="appdemo/4.jpg" width="240"> </p>
+<p align="center"> <img src="BACKBU-main/appdemo/1.jpg" width="240"> <img src="BACKBU-main/appdemo/2.jpg" width="240"> <img src="BACKBU-main/appdemo/3.jpg" width="240"> <img src="BACKBU-main/appdemo/4.jpg" width="240"> </p>
 
 Features
 Apple Maps with user location + blue polyline for the active trip
