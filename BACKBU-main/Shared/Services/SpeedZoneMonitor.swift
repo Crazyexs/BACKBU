@@ -13,13 +13,12 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         manager.delegate = self
     }
 
-    /// Re-registers geofences for the provided zones.
     func sync(zones: [SpeedZone]) {
         // remove previously monitored regions
         for region in manager.monitoredRegions {
             manager.stopMonitoring(for: region)
         }
-        // register zones
+
         for z in zones {
             let region = CLCircularRegion(center: z.center.location.coordinate,
                                           radius: z.radius,
@@ -30,7 +29,6 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         }
     }
 
-    /// Returns the speed limit if the coordinate lies inside any zone.
     func zoneLimit(for coordinate: CLLocationCoordinate2D, in zones: [SpeedZone]) -> Double? {
         for z in zones {
             let c = z.center.location.coordinate
@@ -43,7 +41,6 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         return nil
     }
 
-    // MARK: - Notifications
     static func notify(title: String, body: String) {
         let c = UNMutableNotificationContent()
         c.title = title
@@ -52,7 +49,6 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         UNUserNotificationCenter.current().add(req)
     }
 
-    /// Convenience used by TripRecorder when current speed exceeds the limit.
     func notifyOverSpeed(limit: Double, speed: Double) {
         Self.notify(
             title: "Speeding",
@@ -60,7 +56,6 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         )
     }
 
-    // MARK: - CLLocationManagerDelegate (optional stubs)
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) { }
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion)  { }
 }

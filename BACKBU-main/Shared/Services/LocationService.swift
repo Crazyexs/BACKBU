@@ -6,22 +6,18 @@ import UIKit
 @MainActor
 final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
-    // MARK: - Public
     @Published var currentLocation: CLLocation?
     var onLocation: ((CLLocation) -> Void)?
 
-    /// Expose current authorization so UI can react (Start button, etc.)
     var authorizationStatus: CLAuthorizationStatus {
         manager.authorizationStatus
     }
 
-    /// Open the app’s Settings page (used when permission is denied).
     func openSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
     }
 
-    // MARK: - Private
     private let manager = CLLocationManager()
     private var wantsUpdates = false
 
@@ -37,7 +33,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.activityType = .automotiveNavigation
         manager.pausesLocationUpdatesAutomatically = true
 
-        // Allow background updates only if capability exists (and not on Simulator)
         #if targetEnvironment(simulator)
         let enableBackground = false
         #else
@@ -53,7 +48,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: - Permissions
     func requestPermissions() {
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -67,7 +61,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: - Control
     func start() {
         wantsUpdates = true
         maybeStartIfAuthorized()
@@ -91,12 +84,10 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: - CLLocationManagerDelegate (Swift 6 friendly)
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in self.maybeStartIfAuthorized() }
     }
 
-    // Keep for older iOS; forward to the new one
     nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         locationManagerDidChangeAuthorization(manager)
     }
@@ -110,6 +101,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Common on Simulator if no route is set
+
     }
 }

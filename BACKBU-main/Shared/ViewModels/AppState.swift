@@ -17,19 +17,14 @@ final class AppState: ObservableObject {
     private let bt = BluetoothAutoStarter()
 
     init() {
-        // Load persisted data
         Task { await store.load() }
 
-        // Ask for notifications
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
 
-        // Ask for location permission on first run
         location.requestPermissions()
     }
 
-    /// Configure motion and Bluetooth auto start/stop logic
     func configureAutoStart() {
-        // Motion-based auto start/stop
         if settings.autoStartMotion {
             motion.start { [weak self] driving in
                 guard let self else { return }
@@ -46,7 +41,6 @@ final class AppState: ObservableObject {
             motion.stop()
         }
 
-        // Bluetooth-based auto start/stop
         if settings.autoStartBluetooth {
             bt.start(whitelist: { [weak self] in self?.settings.carBluetoothNames ?? [] }) { [weak self] connected in
                 guard let self else { return }
@@ -60,7 +54,7 @@ final class AppState: ObservableObject {
                 }
             }
         } else {
-            bt.stop()    // <-- lowerCamelCase; exists in BluetoothAutoStarter above
+            bt.stop()    
         }
     }
 }

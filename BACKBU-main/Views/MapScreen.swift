@@ -11,7 +11,6 @@ struct MapScreen: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Map(position: $position) {
-                // Active trip polyline
                 if let t = state.recorder.activeTrip {
                     let coords = t.points.map {
                         CLLocationCoordinate2D(latitude: $0.coord.latitude,
