@@ -11,6 +11,7 @@ struct MapScreen: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Map(position: $position) {
+                // Active trip polyline
                 if let t = state.recorder.activeTrip {
                     let coords = t.points.map {
                         CLLocationCoordinate2D(latitude: $0.coord.latitude,
@@ -21,9 +22,9 @@ struct MapScreen: View {
                             .stroke(.blue, lineWidth: 6)
                     }
                 }
-                UserAnnotation()                      // <- Apple Maps user dot
+                UserAnnotation()
             }
-            .mapStyle(.standard)                      // <- Apple Map tiles
+            .mapStyle(.standard)
             .mapControls { MapUserLocationButton(); MapPitchToggle() }
             .ignoresSafeArea()
 
@@ -58,7 +59,19 @@ struct MapScreen: View {
 
             HStack(spacing: 12) {
                 if state.recorder.activeTrip == nil {
-                    Button { state.recorder.start() } label: {
+                    // Permission-aware Start
+                    Button {
+                        let status = state.location.authorizationStatus
+                        switch status {
+                        case .notDetermined:
+                            state.location.requestPermissions()
+                        case .denied, .restricted:
+                            state.location.openSettings()
+                        default:
+                            state.recorder.start()
+                            position = .userLocation(followsHeading: false, fallback: .automatic)
+                        }
+                    } label: {
                         Label("Start Tracking", systemImage: "play.fill")
                             .font(.headline)
                             .padding(.vertical, 14)
@@ -67,7 +80,8 @@ struct MapScreen: View {
                     .buttonStyle(.borderedProminent)
                 } else {
                     let t = state.recorder.activeTrip!
-                    Label("\(String(format: "%.2f", t.distanceMeters/1000)) km • \(Int(Date().timeIntervalSince(t.startedAt))) s", systemImage: "speedometer")
+                    Label("\(String(format: \"%.2f\", t.distanceMeters/1000)) km • \(Int(Date().timeIntervalSince(t.startedAt))) s",
+                          systemImage: "speedometer")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .padding(8)
