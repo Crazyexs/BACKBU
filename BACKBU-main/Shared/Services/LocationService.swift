@@ -5,14 +5,13 @@ import Combine
 @MainActor
 final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
-    // MARK: - Public surface
+    // MARK: - Public
     @Published var currentLocation: CLLocation?
     var onLocation: ((CLLocation) -> Void)?
 
     // MARK: - Private
     private let manager = CLLocationManager()
 
-    // Detect if Info.plist has "Required background modes" -> "App registers for location updates"
     private static var hasBackgroundLocationCapability: Bool {
         if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] {
             return modes.contains("location")
@@ -28,8 +27,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.activityType = .automotiveNavigation
         manager.pausesLocationUpdatesAutomatically = true
 
-        // Only enable background updates when the app is provisioned for it
-        // and NOT when running in the Simulator (Simulator often asserts here).
         #if targetEnvironment(simulator)
         let enableBackground = false
         #else
@@ -38,35 +35,27 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
         if enableBackground {
             manager.allowsBackgroundLocationUpdates = true
-            if #available(iOS 11.0, *) {
-                manager.showsBackgroundLocationIndicator = true
-            }
+            if #available(iOS 11.0, *) { manager.showsBackgroundLocationIndicator = true }
         } else {
             manager.allowsBackgroundLocationUpdates = false
-            if #available(iOS 11.0, *) {
-                manager.showsBackgroundLocationIndicator = false
-            }
+            if #available(iOS 11.0, *) { manager.showsBackgroundLocationIndicator = false }
         }
     }
 
     // MARK: - Permissions
     func requestPermissions() {
         if Self.hasBackgroundLocationCapability {
-            // If you’ve enabled the Background Mode, request Always for continuous tracking.
             manager.requestAlwaysAuthorization()
         } else {
-            // Otherwise request When In Use to avoid assertion.
             manager.requestWhenInUseAuthorization()
         }
     }
 
     // MARK: - Control
     func start() {
-        if CLLocationManager.locationServicesEnabled() {
-            manager.startUpdatingLocation()
-            // If you want heading/visits, enable them here conditionally.
-            // manager.startUpdatingHeading()
-        }
+        guard CLLocationManager.locationServicesEnabled() else { return }
+        manager.startUpdatingLocation()
+        // manager.startUpdatingHeading()
     }
 
     func stop() {
@@ -74,20 +63,27 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         // manager.stopUpdatingHeading()
     }
 
-    // MARK: - CLLocationManagerDelegate
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    // MARK: - CLLocationManagerDelegate (Swift 6 friendly)
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
-        currentLocation = loc
-        onLocation?(loc)
+        Task { @MainActor in
+            self.currentLocation = loc
+            self.onLocation?(loc)
+        }
     }
 
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        // Optionally react to status changes
-        // print("Location auth changed:", status.rawValue)
+    nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        // If needed, react to status changes on main
+        Task { @MainActor in
+            // e.g. start after authorization
+            // if status == .authorizedAlways || status == .authorizedWhenInUse { self.start() }
+        }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Optionally report errors
-        // print("Location error:", error.localizedDescription)
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // Log on main if you want
+        Task { @MainActor in
+            // print("Location error:", error.localizedDescription)
+        }
     }
 }

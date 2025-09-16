@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct TripTrackerApp: App {
-    @StateObject var state = AppState()
+    @StateObject private var state = AppState()
 
     var body: some Scene {
         WindowGroup {
@@ -19,8 +19,10 @@ struct TripTrackerApp: App {
                 NavigationStack { SettingsScreen() }
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
-            .environmentObject(state)
-            .preferredColorScheme(.dark) // remove if you want system-driven
+            // Inject environment objects for the whole tab hierarchy
+            .environmentObject(state)              // AppState
+            .environmentObject(state.settings)     // SettingsState (REQUIRED)
+            .preferredColorScheme(.dark)           // remove if you prefer system appearance
         }
     }
 }
