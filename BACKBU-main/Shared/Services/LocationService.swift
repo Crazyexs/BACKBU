@@ -3,20 +3,17 @@ import CoreLocation
 import Combine
 
 @MainActor
-final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocationManagerDelegate {
 
-    // MARK: - Public
+    // MARK: Public
     @Published var currentLocation: CLLocation?
     var onLocation: ((CLLocation) -> Void)?
 
-    // MARK: - Private
+    // MARK: Private
     private let manager = CLLocationManager()
 
     private static var hasBackgroundLocationCapability: Bool {
-        if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] {
-            return modes.contains("location")
-        }
-        return false
+        (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String])?.contains("location") ?? false
     }
 
     override init() {
@@ -27,6 +24,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.activityType = .automotiveNavigation
         manager.pausesLocationUpdatesAutomatically = true
 
+        // Only allow background updates if the entitlement exists (and not on Simulator)
         #if targetEnvironment(simulator)
         let enableBackground = false
         #else
@@ -42,8 +40,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: - Permissions
+    // MARK: Permissions
     func requestPermissions() {
+        // Don’t synchronously query status; let the delegate tell us when it changes.
         if Self.hasBackgroundLocationCapability {
             manager.requestAlwaysAuthorization()
         } else {
@@ -51,7 +50,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // MARK: - Control
+    // MARK: Control
     func start() {
         guard CLLocationManager.locationServicesEnabled() else { return }
         manager.startUpdatingLocation()
@@ -63,7 +62,28 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         // manager.stopUpdatingHeading()
     }
 
-    // MARK: - CLLocationManagerDelegate (Swift 6 friendly)
+    // MARK: CLLocationManagerDelegate (Swift 6 friendly)
+    /// Newer delegate – called whenever authorization changes. Use this instead of the old method.
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            // Example: auto-start when authorized (optional)
+            let status = manager.authorizationStatus
+            switch status {
+            case .authorizedAlways, .authorizedWhenInUse:
+                // If you want to auto-start tracking when permission is granted, uncomment:
+                // self.start()
+                break
+            default:
+                break
+            }
+        }
+    }
+
+    /// Old-style delegate – keep for compatibility; forward to the new handler.
+    nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        locationManagerDidChangeAuthorization(manager)
+    }
+
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         Task { @MainActor in
@@ -72,17 +92,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        // If needed, react to status changes on main
-        Task { @MainActor in
-            // e.g. start after authorization
-            // if status == .authorizedAlways || status == .authorizedWhenInUse { self.start() }
-        }
-    }
-
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Log on main if you want
         Task { @MainActor in
+            // Most common on Simulator if you haven't set a custom location
             // print("Location error:", error.localizedDescription)
         }
     }

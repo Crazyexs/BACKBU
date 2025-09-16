@@ -19,10 +19,9 @@ struct TripTrackerApp: App {
                 NavigationStack { SettingsScreen() }
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
-            // Inject environment objects for the whole tab hierarchy
             .environmentObject(state)              // AppState
-            .environmentObject(state.settings)     // SettingsState (REQUIRED)
-            .preferredColorScheme(.dark)           // remove if you prefer system appearance
+            .environmentObject(state.settings)     // ✅ SettingsState (required)
+            .preferredColorScheme(.dark)           // remove if you want system appearance
         }
     }
 }
