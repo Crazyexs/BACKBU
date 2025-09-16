@@ -34,6 +34,14 @@ final class SpeedZoneMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         }
         return nil
     }
+    
+    func notifyOverSpeed(limit: Double, speed: Double) {
+    Self.notify(
+        title: "Speeding",
+        body: "Limit \(Int(limit)) km/h — you’re at \(Int(speed)) km/h."
+    )
+}
+
 
     // Keep track of entry/exit to update currentLimit (best-effort).
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) { }

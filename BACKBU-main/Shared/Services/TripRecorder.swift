@@ -10,7 +10,6 @@ final class TripRecorder: ObservableObject {
     private let store: Store
     private let location: LocationService
     private let zones: SpeedZoneMonitor
-
     private var activity: Activity<TripActivityAttributes>?
 
     init(store: Store, location: LocationService, zones: SpeedZoneMonitor) {
@@ -37,9 +36,12 @@ final class TripRecorder: ObservableObject {
         await store.add(trip)
     }
 
+    // ✅ FIX: remove nonexistent `lastPointTime`; use last point’s speed
     func stopIfIdle() async {
-        guard let t = activeTrip, Date().timeIntervalSince(t.lastPointTime ?? t.startedAt) >= 60 else { return }
-        await stop()
+        guard let trip = activeTrip else { return }
+        if let s = trip.points.last?.speedKmh, s < 3 {   // near zero km/h
+            await stop()
+        }
     }
 
     func addIncident(_ type: IncidentType) {
@@ -56,7 +58,7 @@ final class TripRecorder: ObservableObject {
         activity = try? Activity.request(attributes: attr, content: .init(state: state, staleDate: nil))
     }
 
-    // NEW: snapshot final state for end(content:dismissalPolicy:)
+    // Helper to build the final content state when ending the activity
     private func snapshotContentState() -> TripActivityAttributes.ContentState {
         guard let trip = activeTrip else {
             return .init(speedKmh: 0, distanceKm: 0, durationSec: 0, overSpeed: false)
@@ -72,7 +74,7 @@ final class TripRecorder: ObservableObject {
         return .init(speedKmh: kmh, distanceKm: distKm, durationSec: durSec, overSpeed: over)
     }
 
-    // FIX: use end(content:dismissalPolicy:) (iOS 16.2+)
+    // ✅ FIX: use new API end(content:dismissalPolicy:) (iOS 16.2+)
     private func endActivity() {
         Task {
             await activity?.end(
@@ -95,9 +97,9 @@ final class TripRecorder: ObservableObject {
         trip.points.append(p)
         activeTrip = trip
 
-        // Speed zone alert
+        // update Live Activity + overspeed notice
         if let limit = zones.zoneLimit(for: loc.coordinate, in: store.speedZones), kmh > limit {
-            zones.notifyOverSpeed(limit: limit, speed: kmh)
+            zones.notifyOverSpeed(limit: limit, speed: kmh)     // ✅ needs method below
             Task {
                 let st = TripActivityAttributes.ContentState(
                     speedKmh: Int(kmh.rounded()),
